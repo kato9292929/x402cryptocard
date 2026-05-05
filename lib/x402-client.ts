@@ -26,7 +26,7 @@ export class X402PaymentRequired extends Error {
  * Fetches a URL that may respond with HTTP 402. When a 402 is received, signs
  * the required USDC payment and retries with the X-PAYMENT header attached.
  *
- * Requires WALLET_PRIVATE_KEY env var (hex, 0x-prefixed).
+ * Requires WALLET_PRIVATE_KEY env var (base58-encoded Solana private key).
  */
 export async function fetchWithX402(url: string): Promise<X402Result> {
   const privateKey = process.env.WALLET_PRIVATE_KEY;
