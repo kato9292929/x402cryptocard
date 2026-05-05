@@ -35,7 +35,7 @@ export interface CrossmintTransfer {
   txHash?: string;
 }
 
-/** Returns the EVM address of the configured AgentWallet. */
+/** Returns the address of the configured AgentWallet. */
 export async function getWalletInfo(): Promise<WalletInfo> {
   const locator = process.env.CROSSMINT_WALLET_LOCATOR;
   if (!locator) throw new Error("CROSSMINT_WALLET_LOCATOR is not set");
@@ -52,7 +52,7 @@ export async function getWalletInfo(): Promise<WalletInfo> {
   const json = await res.json() as { address?: string; chain?: string };
   return {
     address: json.address ?? "",
-    chain: json.chain ?? (process.env.NEXT_PUBLIC_CHAIN ?? "base-sepolia"),
+    chain: json.chain ?? (process.env.NEXT_PUBLIC_CHAIN ?? "solana"),
   };
 }
 
@@ -61,7 +61,7 @@ export async function getUSDCBalance(): Promise<USDCBalance> {
   const locator = process.env.CROSSMINT_WALLET_LOCATOR;
   if (!locator) throw new Error("CROSSMINT_WALLET_LOCATOR is not set");
 
-  const chain = process.env.NEXT_PUBLIC_CHAIN ?? "base-sepolia";
+  const chain = process.env.NEXT_PUBLIC_CHAIN ?? "solana";
 
   const res = await fetch(
     `${apiBase()}/api/v1-alpha1/wallets/${encodeURIComponent(locator)}/balances?currency=usdc&chain=${chain}`,
@@ -95,7 +95,7 @@ export async function transferUSDC(toAddress: string, usdcAmount: string): Promi
   const locator = process.env.CROSSMINT_WALLET_LOCATOR;
   if (!locator) throw new Error("CROSSMINT_WALLET_LOCATOR is not set");
 
-  const chain = process.env.NEXT_PUBLIC_CHAIN ?? "base-sepolia";
+  const chain = process.env.NEXT_PUBLIC_CHAIN ?? "solana";
 
   // Amount in micro-USDC (6 decimals)
   const rawAmount = Math.round(parseFloat(usdcAmount) * 1_000_000).toString();

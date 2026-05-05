@@ -329,7 +329,7 @@ export default function Home() {
             </p>
           </div>
           <span className="hidden sm:inline rounded-full bg-indigo-900/40 border border-indigo-700/50 px-3 py-1 text-xs text-indigo-300">
-            base-sepolia · sandbox
+            {process.env.NEXT_PUBLIC_CHAIN ?? "solana"} · production
           </span>
         </div>
       </header>

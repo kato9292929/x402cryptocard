@@ -2,7 +2,7 @@ import { createSigner } from "x402/types";
 import { createPaymentHeader, selectPaymentRequirements } from "x402/client";
 import type { PaymentRequirements } from "x402/types";
 
-const CHAIN = (process.env.NEXT_PUBLIC_CHAIN ?? "base-sepolia") as Parameters<
+const CHAIN = (process.env.NEXT_PUBLIC_CHAIN ?? "solana") as Parameters<
   typeof selectPaymentRequirements
 >[1];
 
@@ -51,7 +51,7 @@ export async function fetchWithX402(url: string): Promise<X402Result> {
 
   const requirement = selectPaymentRequirements(accepts, CHAIN, "exact");
 
-  const signer = await createSigner(requirement.network, privateKey as `0x${string}`);
+  const signer = await createSigner(requirement.network, privateKey);
   const paymentHeader = await createPaymentHeader(signer, 1, requirement);
 
   // Retry with payment header
