@@ -1,38 +1,20 @@
 import { NextResponse } from "next/server";
-import { transferUSDC } from "@/lib/crossmint";
-import { getCardFundingAddress, getCard } from "@/lib/rain";
+import { addDelegation } from "@/lib/nevermined";
 
 export async function POST(request: Request) {
-  let body: { cardId?: string; amount?: string };
+  let body: { amount?: string; durationDays?: number } = {};
   try {
-    body = await request.json() as { cardId?: string; amount?: string };
+    body = await request.json() as typeof body;
   } catch {
-    return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  const { cardId, amount = "1.00" } = body;
-
-  if (!cardId) {
-    return NextResponse.json({ success: false, error: "cardId is required" }, { status: 400 });
+    // default values used below
   }
 
   try {
-    const fundingAddress = await getCardFundingAddress(cardId);
-    if (!fundingAddress) {
-      throw new Error("Card does not have a funding address yet");
-    }
-
-    const transfer = await transferUSDC(fundingAddress, amount);
-
-    // Give the network a moment before re-querying — in production you'd poll
-    const cardStatus = await getCard(cardId);
-
-    return NextResponse.json({
-      success: true,
-      transfer,
-      card: cardStatus.card,
-      fundingAddress,
-    });
+    const result = await addDelegation(
+      body.amount ?? "10.00",
+      body.durationDays ?? 30
+    );
+    return NextResponse.json({ success: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[/api/fund]", message);

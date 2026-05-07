@@ -12,14 +12,17 @@ interface WalletData {
   chain: string;
 }
 
-interface CardData {
+interface AgentCard {
   id: string;
-  maskedNumber: string;
-  expMonth: string;
-  expYear: string;
+  fullId: string;
   status: string;
-  balance: string;
-  lastFour: string;
+  limitUsd: string;
+  spentUsd: string;
+  remainingUsd: string;
+  currency: string;
+  expiresAt: string;
+  transactionCount: number;
+  provider: string;
 }
 
 interface EarnResult {
@@ -57,22 +60,25 @@ function ArrowRight() {
   );
 }
 
-interface StepCardProps {
+function StepCard({
+  step,
+  title,
+  subtitle,
+  status,
+  children,
+}: {
   step: number;
   title: string;
   subtitle: string;
   status: StepStatus;
   children: React.ReactNode;
-}
-
-function StepCard({ step, title, subtitle, status, children }: StepCardProps) {
+}) {
   const borderColor: Record<StepStatus, string> = {
     idle: "border-zinc-700",
     loading: "border-yellow-500/60",
     success: "border-emerald-500/60",
     error: "border-red-500/60",
   };
-
   return (
     <div
       className={`flex flex-col gap-4 rounded-2xl border bg-zinc-900 p-5 transition-colors duration-300 ${borderColor[status]}`}
@@ -120,7 +126,6 @@ function ActionButton({
     variant === "primary"
       ? "bg-indigo-600 hover:bg-indigo-500 text-white"
       : "bg-zinc-700 hover:bg-zinc-600 text-zinc-100";
-
   return (
     <button onClick={onClick} disabled={disabled || loading} className={`${base} ${styles}`}>
       {loading ? (
@@ -143,6 +148,18 @@ function ErrorBox({ message }: { message: string }) {
   );
 }
 
+function BudgetBar({ spent, limit }: { spent: string; limit: string }) {
+  const pct = limit === "0.00" ? 0 : Math.min(100, (parseFloat(spent) / parseFloat(limit)) * 100);
+  return (
+    <div className="w-full bg-zinc-700 rounded-full h-1.5">
+      <div
+        className="bg-emerald-400 h-1.5 rounded-full transition-all duration-500"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
@@ -158,18 +175,18 @@ export default function Home() {
   const [walletError, setWalletError] = useState<string | null>(null);
   const [wallet, setWallet] = useState<WalletData | null>(null);
 
-  // Step 3 — Card
+  // Step 3 — Agent Card (Nevermined delegation)
   const [cardStatus, setCardStatus] = useState<StepStatus>("idle");
   const [cardError, setCardError] = useState<string | null>(null);
-  const [card, setCard] = useState<CardData | null>(null);
+  const [card, setCard] = useState<AgentCard | null>(null);
 
-  // Fund sub-step
-  const [fundStatus, setFundStatus] = useState<StepStatus>("idle");
-  const [fundError, setFundError] = useState<string | null>(null);
-  const [fundAmount, setFundAmount] = useState("1.00");
+  // Add delegation sub-step
+  const [addStatus, setAddStatus] = useState<StepStatus>("idle");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addAmount, setAddAmount] = useState("10.00");
 
-  // Step 4 — Spend (display only)
-  const spendStatus: StepStatus = card?.status === "active" ? "success" : "idle";
+  // Step 4 — Spend
+  const spendStatus: StepStatus = card?.status === "Active" ? "success" : "idle";
 
   // ---------------------------------------------------------------------------
   // Fetch wallet on mount
@@ -180,11 +197,7 @@ export default function Home() {
     setWalletError(null);
     try {
       const res = await fetch("/api/wallet");
-      const json = (await res.json()) as {
-        success: boolean;
-        wallet?: WalletData;
-        error?: string;
-      };
+      const json = (await res.json()) as { success: boolean; wallet?: WalletData; error?: string };
       if (!json.success) throw new Error(json.error ?? "Wallet fetch failed");
       setWallet(json.wallet ?? null);
       setWalletStatus("success");
@@ -207,21 +220,12 @@ export default function Home() {
     setEarnError(null);
     try {
       const res = await fetch("/api/earn", { method: "POST" });
-      const json = (await res.json()) as {
-        success: boolean;
-        error?: string;
-      } & Partial<EarnResult>;
+      const json = (await res.json()) as { success: boolean; error?: string } & Partial<EarnResult>;
       if (!json.success) throw new Error(json.error ?? "Earn failed");
-      setEarnResult({
-        weatherData: json.weatherData,
-        payment: json.payment!,
-        walletBalance: json.walletBalance!,
-      });
+      setEarnResult({ weatherData: json.weatherData, payment: json.payment!, walletBalance: json.walletBalance! });
       setEarnStatus("success");
       if (json.walletBalance) {
-        setWallet((prev) =>
-          prev ? { ...prev, formatted: json.walletBalance!.formatted } : null
-        );
+        setWallet((prev) => (prev ? { ...prev, formatted: json.walletBalance!.formatted } : null));
       }
     } catch (e) {
       setEarnError(e instanceof Error ? e.message : "Unknown error");
@@ -230,54 +234,25 @@ export default function Home() {
   }
 
   // ---------------------------------------------------------------------------
-  // Issue card
+  // Issue delegation (Agent Card)
   // ---------------------------------------------------------------------------
 
   async function handleIssueCard() {
     setCardStatus("loading");
     setCardError(null);
     try {
-      const res = await fetch("/api/card/issue", { method: "POST" });
-      const json = (await res.json()) as {
-        success: boolean;
-        card?: CardData;
-        error?: string;
-      };
-      if (!json.success) throw new Error(json.error ?? "Card issuance failed");
+      const res = await fetch("/api/card/issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spendingLimitUsd: "10.00", durationDays: 30 }),
+      });
+      const json = (await res.json()) as { success: boolean; card?: AgentCard; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Delegation creation failed");
       setCard(json.card ?? null);
       setCardStatus("success");
     } catch (e) {
       setCardError(e instanceof Error ? e.message : "Unknown error");
       setCardStatus("error");
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Fund card
-  // ---------------------------------------------------------------------------
-
-  async function handleFund() {
-    if (!card?.id) return;
-    setFundStatus("loading");
-    setFundError(null);
-    try {
-      const res = await fetch("/api/fund", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardId: card.id, amount: fundAmount }),
-      });
-      const json = (await res.json()) as {
-        success: boolean;
-        card?: CardData;
-        error?: string;
-      };
-      if (!json.success) throw new Error(json.error ?? "Fund failed");
-      if (json.card) setCard(json.card);
-      setFundStatus("success");
-      void fetchWallet();
-    } catch (e) {
-      setFundError(e instanceof Error ? e.message : "Unknown error");
-      setFundStatus("error");
     }
   }
 
@@ -286,16 +261,12 @@ export default function Home() {
   // ---------------------------------------------------------------------------
 
   async function refreshCard() {
-    if (!card?.id) return;
     setCardStatus("loading");
+    setCardError(null);
     try {
-      const res = await fetch(`/api/card/status?cardId=${card.id}`);
-      const json = (await res.json()) as {
-        success: boolean;
-        card?: CardData;
-        error?: string;
-      };
-      if (!json.success) throw new Error(json.error ?? "Card status fetch failed");
+      const res = await fetch("/api/card/status");
+      const json = (await res.json()) as { success: boolean; card?: AgentCard; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Status fetch failed");
       setCard(json.card ?? null);
       setCardStatus("success");
     } catch (e) {
@@ -305,15 +276,40 @@ export default function Home() {
   }
 
   // ---------------------------------------------------------------------------
+  // Add delegation (fund)
+  // ---------------------------------------------------------------------------
+
+  async function handleAddDelegation() {
+    setAddStatus("loading");
+    setAddError(null);
+    try {
+      const res = await fetch("/api/fund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: addAmount, durationDays: 30 }),
+      });
+      const json = (await res.json()) as { success: boolean; card?: AgentCard; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Add delegation failed");
+      if (json.card) setCard(json.card);
+      setAddStatus("success");
+    } catch (e) {
+      setAddError(e instanceof Error ? e.message : "Unknown error");
+      setAddStatus("error");
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   const weatherSummary =
-    earnResult?.weatherData &&
-    typeof earnResult.weatherData === "object" &&
-    earnResult.weatherData !== null
+    earnResult?.weatherData && typeof earnResult.weatherData === "object" && earnResult.weatherData !== null
       ? JSON.stringify(earnResult.weatherData).slice(0, 120) + "…"
       : null;
+
+  const expiresLabel = card?.expiresAt
+    ? new Date(card.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "—";
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -322,10 +318,10 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold tracking-tight">
-              <span className="text-indigo-400">x402</span> Loop
+              <span className="text-indigo-400">x402</span> Crypto Card
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Earn USDC via x402 · Spend with Rain virtual Visa · Powered by Crossmint
+              Earn USDC via x402 · Agent Card via Nevermined · Powered by Crossmint + Visa
             </p>
           </div>
           <span className="hidden sm:inline rounded-full bg-indigo-900/40 border border-indigo-700/50 px-3 py-1 text-xs text-indigo-300">
@@ -337,6 +333,7 @@ export default function Home() {
       {/* Flow grid */}
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-4 items-start">
+
           {/* ── Step 1: Earn ── */}
           <StepCard step={1} title="Earn" subtitle="x402 micro-payment" status={earnStatus}>
             <div className="space-y-2">
@@ -345,10 +342,7 @@ export default function Home() {
               <Pill label="Protocol" value="x402 (HTTP 402)" />
               {earnResult && (
                 <>
-                  <Pill
-                    label="Paid"
-                    value={`${(Number(earnResult.payment.amountPaid) / 1e6).toFixed(6)} USDC`}
-                  />
+                  <Pill label="Paid" value={`${(Number(earnResult.payment.amountPaid) / 1e6).toFixed(6)} USDC`} />
                   <Pill label="Network" value={earnResult.payment.network} />
                 </>
               )}
@@ -367,108 +361,94 @@ export default function Home() {
           <ArrowRight />
 
           {/* ── Step 2: Wallet ── */}
-          <StepCard
-            step={2}
-            title="Wallet"
-            subtitle="Crossmint AgentWallet"
-            status={walletStatus}
-          >
+          <StepCard step={2} title="Wallet" subtitle="Crossmint AgentWallet" status={walletStatus}>
             <div className="space-y-2">
               {wallet ? (
                 <>
                   <Pill label="USDC Balance" value={`$${wallet.formatted}`} />
                   <Pill
                     label="Address"
-                    value={
-                      wallet.address
-                        ? `${wallet.address.slice(0, 8)}…${wallet.address.slice(-6)}`
-                        : "—"
-                    }
+                    value={wallet.address ? `${wallet.address.slice(0, 8)}…${wallet.address.slice(-6)}` : "—"}
                   />
                   <Pill label="Chain" value={wallet.chain} />
                 </>
               ) : (
-                <Pill
-                  label="Status"
-                  value={walletStatus === "loading" ? "Loading…" : "—"}
-                />
+                <Pill label="Status" value={walletStatus === "loading" ? "Loading…" : "—"} />
               )}
               {walletError && <ErrorBox message={walletError} />}
             </div>
-            <ActionButton
-              onClick={fetchWallet}
-              loading={walletStatus === "loading"}
-              variant="secondary"
-            >
+            <ActionButton onClick={fetchWallet} loading={walletStatus === "loading"} variant="secondary">
               Refresh Balance
             </ActionButton>
           </StepCard>
 
           <ArrowRight />
 
-          {/* ── Step 3: Card ── */}
-          <StepCard step={3} title="Card" subtitle="Rain Virtual Visa" status={cardStatus}>
+          {/* ── Step 3: Agent Card ── */}
+          <StepCard step={3} title="Agent Card" subtitle="Nevermined delegation" status={cardStatus}>
             <div className="space-y-2">
               {card ? (
                 <>
-                  {/* Card visual */}
-                  <div className="rounded-xl bg-gradient-to-br from-indigo-700 to-violet-800 p-4 text-sm font-mono">
-                    <div className="flex justify-between items-start mb-6">
+                  {/* Delegation card visual */}
+                  <div className="rounded-xl bg-gradient-to-br from-emerald-800 to-teal-900 p-4 text-sm font-mono">
+                    <div className="flex justify-between items-start mb-4">
                       <span className="text-white/70 text-xs uppercase tracking-widest">
-                        Virtual Visa
+                        Nevermined Agent Card
                       </span>
-                      <span
-                        className={`text-xs font-semibold ${
-                          card.status === "active"
-                            ? "text-emerald-300"
-                            : "text-yellow-300"
-                        }`}
-                      >
+                      <span className={`text-xs font-semibold ${card.status === "Active" ? "text-emerald-300" : "text-yellow-300"}`}>
                         {card.status.toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-lg tracking-widest text-white">
-                      {card.maskedNumber}
+                    <div className="text-lg tracking-widest text-white mb-3">
+                      # {card.fullId.slice(0, 8)}…{card.fullId.slice(-4)}
                     </div>
-                    <div className="mt-2 flex gap-4 text-xs text-white/60">
-                      <span>
-                        EXP {card.expMonth}/{card.expYear}
-                      </span>
-                      <span>BAL ${card.balance}</span>
+                    <BudgetBar spent={card.spentUsd} limit={card.limitUsd} />
+                    <div className="mt-2 flex justify-between text-xs text-white/60">
+                      <span>${card.remainingUsd} remaining of ${card.limitUsd}</span>
+                      <span>Exp {expiresLabel}</span>
                     </div>
                   </div>
 
-                  {/* Fund form */}
-                  <div className="flex gap-2 items-center">
+                  <Pill label="Transactions" value={String(card.transactionCount)} />
+                  <Pill label="Provider" value={card.provider} />
+
+                  {/* Add delegation form */}
+                  <div className="flex gap-2 items-center pt-1">
                     <input
                       type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={fundAmount}
-                      onChange={(e) => setFundAmount(e.target.value)}
+                      min="1"
+                      step="1"
+                      value={addAmount}
+                      onChange={(e) => setAddAmount(e.target.value)}
                       className="flex-1 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-                      placeholder="USDC amount"
+                      placeholder="USD amount"
                     />
-                    <span className="text-zinc-400 text-sm">USDC</span>
+                    <span className="text-zinc-400 text-sm">USD</span>
                   </div>
-                  {fundError && <ErrorBox message={fundError} />}
-                  <ActionButton onClick={handleFund} loading={fundStatus === "loading"}>
-                    Fund Card →
+                  {addError && <ErrorBox message={addError} />}
+                  <ActionButton onClick={handleAddDelegation} loading={addStatus === "loading"}>
+                    Add Delegation →
                   </ActionButton>
                   <ActionButton onClick={refreshCard} variant="secondary">
-                    Refresh Card
+                    Refresh Status
                   </ActionButton>
                 </>
               ) : (
                 <>
-                  <Pill label="Card" value="Not yet issued" />
+                  <Pill label="Delegation" value="Not yet created" />
+                  <Pill label="Provider" value="Nevermined + Stripe" />
                   {cardError && <ErrorBox message={cardError} />}
                 </>
               )}
             </div>
             {!card && (
               <ActionButton onClick={handleIssueCard} loading={cardStatus === "loading"}>
-                Issue Virtual Card →
+                Create Agent Card →
+              </ActionButton>
+            )}
+            {card && cardStatus === "idle" && (
+              <ActionButton onClick={refreshCard} variant="secondary">
+                Refresh Status
               </ActionButton>
             )}
           </StepCard>
@@ -476,22 +456,22 @@ export default function Home() {
           <ArrowRight />
 
           {/* ── Step 4: Spend ── */}
-          <StepCard step={4} title="Spend" subtitle="Visa network" status={spendStatus}>
+          <StepCard step={4} title="Spend" subtitle="Visa via Nevermined" status={spendStatus}>
             <div className="space-y-2">
-              <Pill label="Network" value="Visa" />
+              <Pill label="Network" value="Visa (VTS)" />
               <Pill label="Acceptance" value="150M+ merchants" />
-              <Pill label="Card type" value="Virtual Visa" />
-              <Pill
-                label="Ready"
-                value={card?.status === "active" ? "Yes ✓" : "Issue card first"}
-              />
+              <Pill label="Settlement" value="Stripe → Visa" />
+              <Pill label="Ready" value={card?.status === "Active" ? "Yes ✓" : "Create card first"} />
+              {card && (
+                <Pill label="Budget left" value={`$${card.remainingUsd} ${card.currency}`} />
+              )}
             </div>
-            {card?.status === "active" && (
+            {card?.status === "Active" && (
               <div className="rounded-xl bg-emerald-950/40 border border-emerald-700/50 p-4 text-center">
                 <div className="text-2xl mb-1">💳</div>
-                <p className="text-sm text-emerald-300 font-semibold">Card is active</p>
+                <p className="text-sm text-emerald-300 font-semibold">Agent Card is active</p>
                 <p className="text-xs text-emerald-400/70 mt-1">
-                  Use **** {card.lastFour} at any Visa merchant
+                  Delegation #{card.id} · ${card.remainingUsd} remaining
                 </p>
               </div>
             )}
@@ -503,30 +483,12 @@ export default function Home() {
           <h3 className="text-sm font-semibold text-zinc-300 mb-3">The Complete Loop</h3>
           <div className="flex flex-wrap gap-2 text-xs font-mono">
             {[
-              {
-                label: "Japan Data API",
-                color: "bg-indigo-900/60 text-indigo-300 border-indigo-700/50",
-              },
-              {
-                label: "→ x402 (HTTP 402)",
-                color: "bg-zinc-800 text-zinc-300 border-zinc-600/50",
-              },
-              {
-                label: "→ USDC earned",
-                color: "bg-emerald-900/50 text-emerald-300 border-emerald-700/50",
-              },
-              {
-                label: "→ Crossmint AgentWallet",
-                color: "bg-violet-900/50 text-violet-300 border-violet-700/50",
-              },
-              {
-                label: "→ Rain Virtual Visa",
-                color: "bg-blue-900/50 text-blue-300 border-blue-700/50",
-              },
-              {
-                label: "→ 150M+ merchants",
-                color: "bg-amber-900/50 text-amber-300 border-amber-700/50",
-              },
+              { label: "Japan Data API", color: "bg-indigo-900/60 text-indigo-300 border-indigo-700/50" },
+              { label: "→ x402 (HTTP 402)", color: "bg-zinc-800 text-zinc-300 border-zinc-600/50" },
+              { label: "→ USDC earned", color: "bg-emerald-900/50 text-emerald-300 border-emerald-700/50" },
+              { label: "→ Crossmint AgentWallet", color: "bg-violet-900/50 text-violet-300 border-violet-700/50" },
+              { label: "→ Nevermined Delegation", color: "bg-teal-900/50 text-teal-300 border-teal-700/50" },
+              { label: "→ Visa (150M+ merchants)", color: "bg-amber-900/50 text-amber-300 border-amber-700/50" },
             ].map(({ label, color }) => (
               <span key={label} className={`rounded-full border px-3 py-1 ${color}`}>
                 {label}

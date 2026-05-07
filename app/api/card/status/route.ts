@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCard } from "@/lib/rain";
+import { getCardStatus } from "@/lib/nevermined";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const cardId = searchParams.get("cardId");
-
-  if (!cardId) {
-    return NextResponse.json({ success: false, error: "cardId is required" }, { status: 400 });
-  }
-
+export async function GET() {
   try {
-    const status = await getCard(cardId);
+    const status = await getCardStatus();
     return NextResponse.json({ success: true, ...status });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
