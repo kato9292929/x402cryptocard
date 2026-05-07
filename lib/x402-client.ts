@@ -46,10 +46,26 @@ export async function fetchWithX402(url: string): Promise<X402Result> {
   }
 
   // Parse payment requirements from 402 body
-  const body = await firstRes.json() as { accepts: PaymentRequirements[] };
-  const accepts: PaymentRequirements[] = body.accepts ?? [];
+  const body = await firstRes.json() as { accepts?: PaymentRequirements[]; paymentRequirements?: PaymentRequirements[] };
+  console.log("[x402] 402 body:", JSON.stringify(body).slice(0, 500));
+
+  // Support both field names used by different x402 servers
+  const accepts: PaymentRequirements[] = body.accepts ?? body.paymentRequirements ?? [];
+
+  if (accepts.length === 0) {
+    throw new Error(
+      `x402: server returned 402 but no payment requirements found. Body: ${JSON.stringify(body).slice(0, 300)}`
+    );
+  }
 
   const requirement = selectPaymentRequirements(accepts, CHAIN, "exact");
+
+  if (!requirement) {
+    throw new Error(
+      `x402: no matching requirement for chain "${CHAIN}". ` +
+      `Available: ${accepts.map((a) => `${a.network}(${a.scheme})`).join(", ")}`
+    );
+  }
 
   const signer = await createSigner(requirement.network, privateKey);
   const paymentHeader = await createPaymentHeader(signer, 1, requirement);
