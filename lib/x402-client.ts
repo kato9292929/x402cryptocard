@@ -2,7 +2,41 @@ import { createSigner } from "x402/types";
 import { createPaymentHeader, selectPaymentRequirements } from "x402/client";
 import type { PaymentRequirements } from "x402/types";
 
-const CHAIN = (process.env.NEXT_PUBLIC_CHAIN ?? "solana") as Parameters<
+// ---------------------------------------------------------------------------
+// x402 v2 compatibility — CAIP-2 network name normalisation
+// ---------------------------------------------------------------------------
+
+// Maps x402 v2 CAIP-2 network identifiers to the names recognised by
+// the x402 npm package (SupportedEVMNetworks / SupportedSVMNetworks).
+const CAIP2_TO_NETWORK: Record<string, string> = {
+  // Solana (genesis hash → x402 name)
+  "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "solana-devnet",
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d": "solana",
+  // EVM (eip155:chainId → x402 name)
+  "eip155:84532": "base-sepolia",
+  "eip155:8453": "base",
+  "eip155:43113": "avalanche-fuji",
+  "eip155:43114": "avalanche",
+  "eip155:1": "ethereum",
+};
+
+function normalizeRequirements(raw: unknown[]): PaymentRequirements[] {
+  return raw.map((r) => {
+    const req = r as Record<string, unknown>;
+    const rawNetwork = req.network as string;
+    const network = CAIP2_TO_NETWORK[rawNetwork] ?? rawNetwork;
+    return {
+      ...req,
+      network,
+      // v2 uses "amount"; v1 uses "maxAmountRequired"
+      maxAmountRequired: ((req.maxAmountRequired ?? req.amount) as string) ?? "0",
+    } as PaymentRequirements;
+  });
+}
+
+// ---------------------------------------------------------------------------
+
+const CHAIN = (process.env.NEXT_PUBLIC_CHAIN ?? "solana-devnet") as Parameters<
   typeof selectPaymentRequirements
 >[1];
 
@@ -23,8 +57,9 @@ export class X402PaymentRequired extends Error {
 }
 
 /**
- * Fetches a URL that may respond with HTTP 402. When a 402 is received, signs
- * the required USDC payment and retries with the X-PAYMENT header attached.
+ * Fetches a URL that may respond with HTTP 402. Supports both:
+ *   - x402 v2: payment requirements in `payment-required` header (base64 JSON)
+ *   - x402 v1: payment requirements in response body under `accepts`
  *
  * Requires WALLET_PRIVATE_KEY env var (base58-encoded Solana private key).
  */
@@ -45,17 +80,30 @@ export async function fetchWithX402(url: string): Promise<X402Result> {
     };
   }
 
-  // Parse payment requirements from 402 body
-  const body = await firstRes.json() as { accepts?: PaymentRequirements[]; paymentRequirements?: PaymentRequirements[] };
-  console.log("[x402] 402 body:", JSON.stringify(body).slice(0, 500));
+  // ---------------------------------------------------------------------------
+  // Parse payment requirements
+  // x402 v2: `payment-required` header (base64-encoded JSON array)
+  // x402 v1: response body `{ accepts: [...] }`
+  // ---------------------------------------------------------------------------
+  let accepts: PaymentRequirements[];
 
-  // Support both field names used by different x402 servers
-  const accepts: PaymentRequirements[] = body.accepts ?? body.paymentRequirements ?? [];
+  const paymentRequiredHeader = firstRes.headers.get("payment-required");
+  if (paymentRequiredHeader) {
+    // v2 path
+    const decoded = Buffer.from(paymentRequiredHeader, "base64").toString("utf-8");
+    console.log("[x402 v2] payment-required header decoded:", decoded.slice(0, 400));
+    const raw = JSON.parse(decoded) as unknown[];
+    accepts = normalizeRequirements(Array.isArray(raw) ? raw : [raw]);
+  } else {
+    // v1 fallback
+    const body = await firstRes.json() as { accepts?: unknown[]; paymentRequirements?: unknown[] };
+    console.log("[x402 v1] 402 body:", JSON.stringify(body).slice(0, 400));
+    const raw = body.accepts ?? body.paymentRequirements ?? [];
+    accepts = normalizeRequirements(raw);
+  }
 
   if (accepts.length === 0) {
-    throw new Error(
-      `x402: server returned 402 but no payment requirements found. Body: ${JSON.stringify(body).slice(0, 300)}`
-    );
+    throw new Error("x402: server returned 402 but no payment requirements found");
   }
 
   const requirement = selectPaymentRequirements(accepts, CHAIN, "exact");
