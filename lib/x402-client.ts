@@ -90,10 +90,28 @@ export async function fetchWithX402(url: string): Promise<X402Result> {
   const paymentRequiredHeader = firstRes.headers.get("payment-required");
   if (paymentRequiredHeader) {
     // v2 path
-    const decoded = Buffer.from(paymentRequiredHeader, "base64").toString("utf-8");
-    console.log("[x402 v2] payment-required header decoded:", decoded.slice(0, 400));
-    const raw = JSON.parse(decoded) as unknown[];
-    accepts = normalizeRequirements(Array.isArray(raw) ? raw : [raw]);
+    console.log("[x402 v2] raw header (first 300):", paymentRequiredHeader.slice(0, 300));
+    let decoded: string;
+    try {
+      decoded = Buffer.from(paymentRequiredHeader, "base64").toString("utf-8");
+      // Verify it looks like JSON; if not, assume it's already plain JSON
+      if (!decoded.trim().startsWith("[") && !decoded.trim().startsWith("{")) {
+        decoded = paymentRequiredHeader;
+      }
+    } catch {
+      decoded = paymentRequiredHeader;
+    }
+    console.log("[x402 v2] decoded:", decoded.slice(0, 400));
+    let raw: unknown;
+    try {
+      raw = JSON.parse(decoded);
+    } catch (e) {
+      throw new Error(`x402: failed to parse payment-required header as JSON: ${e instanceof Error ? e.message : e}. Raw: ${decoded.slice(0, 200)}`);
+    }
+    const rawArr = Array.isArray(raw) ? raw : [raw];
+    console.log("[x402 v2] parsed requirements:", JSON.stringify(rawArr).slice(0, 400));
+    accepts = normalizeRequirements(rawArr);
+    console.log("[x402 v2] normalized accepts:", JSON.stringify(accepts).slice(0, 400));
   } else {
     // v1 fallback
     const body = await firstRes.json() as { accepts?: unknown[]; paymentRequirements?: unknown[] };
