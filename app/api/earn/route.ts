@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchWithX402, decodePaymentResponseHeader } from "@/lib/x402-client";
+import { fetchWithX402 } from "@/lib/x402-client";
 import { getUSDCBalance } from "@/lib/crossmint";
 
 const JAPAN_API = "https://apijapan.vercel.app/api/weather/tokyo";
@@ -15,27 +15,24 @@ export async function POST() {
 
     const weatherData = await response.json();
 
-    // Extract payment details from X-PAYMENT-RESPONSE header if present
     const paymentHeader = response.headers.get("X-PAYMENT-RESPONSE");
-    const paymentDetails = paymentHeader
-      ? decodePaymentResponseHeader(paymentHeader)
-      : { network: "", transaction: "", payer: "" };
+    let network = "";
+    if (paymentHeader) {
+      try {
+        const decoded = JSON.parse(Buffer.from(paymentHeader, "base64").toString());
+        network = decoded.network ?? "";
+      } catch { /* ignore */ }
+    }
 
-    // Balance check is best-effort — don't let it block a successful payment
     const balance = await getUSDCBalance().catch((err) => {
-      console.warn("[/api/earn] balance fetch (non-fatal):", err instanceof Error ? err.message : err);
+      console.warn("[/api/earn] balance (non-fatal):", err instanceof Error ? err.message : err);
       return null;
     });
 
     return NextResponse.json({
       success: true,
       weatherData,
-      payment: {
-        amountPaid: "0",
-        asset: "",
-        network: paymentDetails.network ?? "",
-        payTo: "",
-      },
+      payment: { amountPaid: "0", asset: "", network, payTo: "" },
       walletBalance: balance ? { formatted: balance.formatted, address: balance.address } : null,
     });
   } catch (err) {
@@ -44,3 +41,4 @@ export async function POST() {
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
+
