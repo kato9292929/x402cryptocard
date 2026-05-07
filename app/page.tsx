@@ -33,7 +33,7 @@ interface EarnResult {
     network: string;
     payTo: string;
   };
-  walletBalance: { formatted: string; address: string };
+  walletBalance: { formatted: string; address: string } | null;
 }
 
 type StepStatus = "idle" | "loading" | "success" | "error";
@@ -214,7 +214,7 @@ export default function Home() {
       const res = await fetch("/api/earn", { method: "POST" });
       const json = (await res.json()) as { success: boolean; error?: string } & Partial<EarnResult>;
       if (!json.success) throw new Error(json.error ?? "Earn failed");
-      setEarnResult({ weatherData: json.weatherData, payment: json.payment!, walletBalance: json.walletBalance! });
+      setEarnResult({ weatherData: json.weatherData, payment: json.payment!, walletBalance: json.walletBalance ?? null });
       setEarnStatus("success");
       if (json.walletBalance) {
         setWallet((prev) => (prev ? { ...prev, formatted: json.walletBalance!.formatted } : null));
