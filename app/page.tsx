@@ -52,14 +52,6 @@ function StatusDot({ status }: { status: StepStatus }) {
   return <span className={`inline-block w-2 h-2 rounded-full ${colors[status]}`} />;
 }
 
-function ArrowRight() {
-  return (
-    <div className="hidden md:flex items-center justify-center text-zinc-500 text-2xl font-light">
-      →
-    </div>
-  );
-}
-
 function StepCard({
   step,
   title,
@@ -332,7 +324,7 @@ export default function Home() {
 
       {/* Flow grid */}
       <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-4 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
 
           {/* ── Step 1: Earn ── */}
           <StepCard step={1} title="Earn" subtitle="x402 micro-payment" status={earnStatus}>
@@ -358,10 +350,8 @@ export default function Home() {
             </ActionButton>
           </StepCard>
 
-          <ArrowRight />
-
           {/* ── Step 2: Wallet ── */}
-          <StepCard step={2} title="Wallet" subtitle="Crossmint AgentWallet" status={walletStatus}>
+          <StepCard step={2} title="Wallet" subtitle="Solana Wallet" status={walletStatus}>
             <div className="space-y-2">
               {wallet ? (
                 <>
@@ -381,8 +371,6 @@ export default function Home() {
               Refresh Balance
             </ActionButton>
           </StepCard>
-
-          <ArrowRight />
 
           {/* ── Step 3: Agent Card ── */}
           <StepCard step={3} title="Agent Card" subtitle="Nevermined delegation" status={cardStatus}>
@@ -453,8 +441,6 @@ export default function Home() {
             )}
           </StepCard>
 
-          <ArrowRight />
-
           {/* ── Step 4: Spend ── */}
           <StepCard step={4} title="Spend" subtitle="Visa via Nevermined" status={spendStatus}>
             <div className="space-y-2">
@@ -486,7 +472,7 @@ export default function Home() {
               { label: "Japan Data API", color: "bg-indigo-900/60 text-indigo-300 border-indigo-700/50" },
               { label: "→ x402 (HTTP 402)", color: "bg-zinc-800 text-zinc-300 border-zinc-600/50" },
               { label: "→ USDC earned", color: "bg-emerald-900/50 text-emerald-300 border-emerald-700/50" },
-              { label: "→ Crossmint AgentWallet", color: "bg-violet-900/50 text-violet-300 border-violet-700/50" },
+              { label: "→ Solana Wallet", color: "bg-violet-900/50 text-violet-300 border-violet-700/50" },
               { label: "→ Nevermined Delegation", color: "bg-teal-900/50 text-teal-300 border-teal-700/50" },
               { label: "→ Visa (150M+ merchants)", color: "bg-amber-900/50 text-amber-300 border-amber-700/50" },
             ].map(({ label, color }) => (
