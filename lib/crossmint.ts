@@ -31,14 +31,20 @@ const USDC_MINT: Record<string, string> = {
   "solana-devnet": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
 };
 
+// SOLANA_CHAIN is a server-only override (not NEXT_PUBLIC) for the actual
+// Solana network used for RPC and USDC mint selection. This lets
+// NEXT_PUBLIC_CHAIN stay as a display value (e.g. "solana") while the
+// real on-chain operations target devnet.
+function solanaChain(): string {
+  return process.env.SOLANA_CHAIN ?? process.env.NEXT_PUBLIC_CHAIN ?? "solana-devnet";
+}
+
 function rpcUrl(): string {
-  const chain = process.env.NEXT_PUBLIC_CHAIN ?? "solana";
-  return process.env.SOLANA_RPC_URL ?? SOLANA_RPC[chain] ?? SOLANA_RPC["solana"];
+  return process.env.SOLANA_RPC_URL ?? SOLANA_RPC[solanaChain()] ?? SOLANA_RPC["solana-devnet"];
 }
 
 function usdcMint(): string {
-  const chain = process.env.NEXT_PUBLIC_CHAIN ?? "solana";
-  return USDC_MINT[chain] ?? USDC_MINT["solana"];
+  return USDC_MINT[solanaChain()] ?? USDC_MINT["solana-devnet"];
 }
 
 async function rpc<T>(method: string, params: unknown[]): Promise<T> {

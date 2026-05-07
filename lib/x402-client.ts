@@ -108,7 +108,21 @@ export async function fetchWithX402(url: string): Promise<X402Result> {
     } catch (e) {
       throw new Error(`x402: failed to parse payment-required header as JSON: ${e instanceof Error ? e.message : e}. Raw: ${decoded.slice(0, 200)}`);
     }
-    const rawArr = Array.isArray(raw) ? raw : [raw];
+
+    // The header may be a plain array OR a wrapped object { accepts: [...], x402Version, ... }
+    let rawArr: unknown[];
+    if (Array.isArray(raw)) {
+      rawArr = raw;
+    } else if (typeof raw === "object" && raw !== null) {
+      const obj = raw as Record<string, unknown>;
+      const inner = obj.accepts ?? obj.paymentRequirements ?? obj.requirements;
+      rawArr = Array.isArray(inner) ? inner : [];
+      if (rawArr.length === 0) {
+        throw new Error(`x402: payment-required header is a wrapped object but no requirements array found. Keys: ${Object.keys(obj).join(", ")}`);
+      }
+    } else {
+      rawArr = [];
+    }
     console.log("[x402 v2] parsed requirements:", JSON.stringify(rawArr).slice(0, 400));
     accepts = normalizeRequirements(rawArr);
     console.log("[x402 v2] normalized accepts:", JSON.stringify(accepts).slice(0, 400));
