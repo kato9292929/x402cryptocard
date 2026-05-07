@@ -23,7 +23,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "viem": "^2.48.4",
-    "x402": "^1.2.0"
+    "x402": "^1.2.0",
+    "x402-solana": "^2.0.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
