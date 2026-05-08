@@ -14,7 +14,7 @@ export async function fetchWithX402(url: string) {
   client.register("solana:*", new ExactSvmScheme(svmSigner));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client.onBeforePaymentCreation((ctx: any) => {
+  client.onBeforePaymentCreation(async (ctx: any) => {
     try {
       const pr = ctx.paymentRequired;
       console.log("[x402-client] payment requirements:", JSON.stringify({
@@ -29,14 +29,12 @@ export async function fetchWithX402(url: string) {
         })),
       }));
     } catch (_e) { /* ignore logging errors */ }
-    return undefined;
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client.onPaymentCreationFailure((ctx: any) => {
+  client.onPaymentCreationFailure(async (ctx: any) => {
     const err = ctx.error;
     console.error("[x402-client] payment creation failed:", err instanceof Error ? err.message : String(err));
-    return undefined;
   });
 
   // Log all 402 responses to capture payment requirements and error details
