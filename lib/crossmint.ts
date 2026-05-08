@@ -1,6 +1,7 @@
 /** Solana devnet wallet helpers — @solana/web3.js + spl-token */
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddress, getAccount } from "@solana/spl-token";
+import { base58 } from "@scure/base";
 
 const USDC_DEVNET_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
 
@@ -8,9 +9,16 @@ function rpcUrl(): string {
   return process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 }
 
+/** Derive the Solana address from WALLET_PRIVATE_KEY (the same key used by x402-client). */
 function walletAddress(): string {
-  const locator = process.env.CROSSMINT_WALLET_LOCATOR ?? "";
-  return locator.replace(/^solana:/, "");
+  const pk = process.env.WALLET_PRIVATE_KEY;
+  if (!pk) return "";
+  try {
+    const keypair = Keypair.fromSecretKey(base58.decode(pk));
+    return keypair.publicKey.toBase58();
+  } catch {
+    return "";
+  }
 }
 
 // ---------------------------------------------------------------------------
