@@ -113,8 +113,16 @@ export async function issueDelegation(
 ): Promise<DelegationCreated> {
   const api = getApi();
 
-  // Use the first enrolled active payment method
-  const methods = await api.listPaymentMethods();
+  // Diagnose before attempting
+  const [methods, power] = await Promise.all([
+    api.listPaymentMethods(),
+    api.getPurchasingPower(),
+  ]);
+  console.log("[nevermined] payment methods:", JSON.stringify(
+    methods.map(m => ({ id: m.id, status: m.status, provider: m.provider }))
+  ));
+  console.log("[nevermined] purchasing power:", JSON.stringify(power));
+
   const card = methods.find((m) => m.status === "Active") ?? methods[0];
   if (!card) throw new Error("No enrolled payment method found. Add a card in the Nevermined dashboard.");
 
@@ -125,6 +133,7 @@ export async function issueDelegation(
     durationSecs: durationDays * 24 * 60 * 60,
     currency: "usd",
   };
+  console.log("[nevermined] createDelegation payload:", JSON.stringify(payload));
 
   const result = await api.createDelegation(payload);
 
