@@ -113,16 +113,22 @@ export async function issueDelegation(
 ): Promise<DelegationCreated> {
   const api = getApi();
 
-  // Diagnose before attempting
-  const [methods, power] = await Promise.all([
-    api.listPaymentMethods(),
-    api.getPurchasingPower(),
-  ]);
-  console.log("[nevermined] payment methods:", JSON.stringify(
-    methods.map(m => ({ id: m.id, status: m.status, provider: m.provider }))
-  ));
-  console.log("[nevermined] purchasing power:", JSON.stringify(power));
+  // Return the existing active delegation instead of creating a duplicate (412)
+  const existing = await api.listDelegations({ accessible: true });
+  const active = existing.delegations
+    .filter((d) => d.status === "Active")
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  if (active[0]) {
+    console.log("[nevermined] reusing existing active delegation:", active[0].delegationId);
+    return {
+      delegationId: active[0].delegationId,
+      card: toAgentCard(active[0]),
+    };
+  }
+
+  // No active delegation — create one
+  const methods = await api.listPaymentMethods();
   const card = methods.find((m) => m.status === "Active") ?? methods[0];
   if (!card) throw new Error("No enrolled payment method found. Add a card in the Nevermined dashboard.");
 
@@ -133,7 +139,6 @@ export async function issueDelegation(
     durationSecs: durationDays * 24 * 60 * 60,
     currency: "usd",
   };
-  console.log("[nevermined] createDelegation payload:", JSON.stringify(payload));
 
   const result = await api.createDelegation(payload);
 
