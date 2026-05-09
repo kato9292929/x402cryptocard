@@ -6,6 +6,9 @@ const JAPAN_API = "https://apijapan.vercel.app/api/weather/tokyo";
 
 export async function POST() {
   try {
+    // Log WALLET_PRIVATE_KEY presence (not the key itself) for diagnostics
+    console.log("[/api/earn] WALLET_PRIVATE_KEY set:", !!process.env.WALLET_PRIVATE_KEY);
+
     const response = await fetchWithX402(JAPAN_API);
 
     if (!response.ok) {
