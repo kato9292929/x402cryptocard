@@ -14,7 +14,7 @@ Live demo: [x402cryptocard.vercel.app](https://x402cryptocard.vercel.app)
 - x402 Protocol (`@x402/fetch` + `@x402/svm` — official SDK)
 - Nevermined DelegationAPI (Agent Card via Stripe → Visa)
 - Japan Data API ([apijapan.vercel.app](https://apijapan.vercel.app)) — x402-enabled weather, FX, stock data (powered by `@x402/next`)
-- Solana (devnet USDC wallet)
+- Solana (mainnet USDC wallet)
 - Vercel (deployment)
 
 ## How it works
@@ -71,7 +71,7 @@ npm run dev
 
 - [x] Project scaffolded
 - [x] x402 Earn flow working (`@x402/fetch` + `@x402/svm`)
-- [x] Solana wallet balance display
+- [x] Solana mainnet wallet balance display
 - [x] Nevermined Agent Card issuance (idempotent — reuses existing delegation)
 - [x] Spend panel live (Visa via Nevermined, Ready: Yes, $10.00 budget)
 - [x] Deployed to Vercel
@@ -107,7 +107,7 @@ AIエージェントの完全な商取引ループをデモするアプリです
 - x402プロトコル（`@x402/fetch` + `@x402/svm` — 公式SDK）
 - Nevermined DelegationAPI（Agent Card via Stripe → Visa）
 - Japan Data API（[apijapan.vercel.app](https://apijapan.vercel.app)）— x402対応の天気・為替・株価データ（`@x402/next`使用）
-- Solana（devnet USDCウォレット）
+- Solana（mainnet USDCウォレット）
 - Vercel（デプロイ）
 
 ## 仕組み

@@ -3,7 +3,7 @@ import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddress, getAccount } from "@solana/spl-token";
 import { base58 } from "@scure/base";
 
-const USDC_DEVNET_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
 function paymentWalletAddress(): string {
   const pk = process.env.WALLET_PRIVATE_KEY;
@@ -17,10 +17,10 @@ function paymentWalletAddress(): string {
 
 async function getUSDCBalance(address: string): Promise<number> {
   if (!address) return 0;
-  const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
+  const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
   const connection = new Connection(rpcUrl);
   const walletPubkey = new PublicKey(address);
-  const tokenAccount = await getAssociatedTokenAddress(USDC_DEVNET_MINT, walletPubkey);
+  const tokenAccount = await getAssociatedTokenAddress(USDC_MINT, walletPubkey);
   try {
     const account = await getAccount(connection, tokenAccount);
     return Number(account.amount) / 1_000_000;
@@ -38,7 +38,7 @@ export async function GET() {
       wallet: {
         address,
         formatted: balance.toFixed(6),
-        chain: "solana-devnet",
+        chain: "solana",
       },
     });
   } catch (err) {

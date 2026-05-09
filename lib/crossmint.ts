@@ -1,12 +1,12 @@
-/** Solana devnet wallet helpers — @solana/web3.js + spl-token */
+/** Solana mainnet wallet helpers — @solana/web3.js + spl-token */
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddress, getAccount } from "@solana/spl-token";
 import { base58 } from "@scure/base";
 
-const USDC_DEVNET_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
 function rpcUrl(): string {
-  return process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
+  return process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com";
 }
 
 /** Derive the Solana address from WALLET_PRIVATE_KEY (the same key used by x402-client). */
@@ -45,14 +45,14 @@ export async function getUSDCBalance(): Promise<USDCBalance> {
   const address = walletAddress();
   const connection = new Connection(rpcUrl());
   const walletPubkey = new PublicKey(address);
-  const tokenAccount = await getAssociatedTokenAddress(USDC_DEVNET_MINT, walletPubkey);
+  const tokenAccount = await getAssociatedTokenAddress(USDC_MINT, walletPubkey);
 
   try {
     const account = await getAccount(connection, tokenAccount);
     const raw = account.amount.toString();
     const formatted = (Number(raw) / 1_000_000).toFixed(6);
-    return { address, rawBalance: raw, formatted, chain: "solana-devnet" };
+    return { address, rawBalance: raw, formatted, chain: "solana" };
   } catch {
-    return { address, rawBalance: "0", formatted: "0.000000", chain: "solana-devnet" };
+    return { address, rawBalance: "0", formatted: "0.000000", chain: "solana" };
   }
 }
