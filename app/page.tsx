@@ -313,7 +313,7 @@ export default function Home() {
               <span className="text-indigo-400">x402</span> Crypto Card
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Earn USDC via x402 · Agent Card via Nevermined · Powered by Crossmint + Visa
+              Earn USDC via x402 · Agent Card via Nevermined · Powered by Nevermined + Visa
             </p>
           </div>
           <span className="hidden sm:inline rounded-full bg-indigo-900/40 border border-indigo-700/50 px-3 py-1 text-xs text-indigo-300">
